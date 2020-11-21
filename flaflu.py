@@ -107,15 +107,13 @@ if __name__ == "__main__":
     )
 
     sc = pyspark.SparkContext(appName="flaflu")
-    # rdd = sc.sequenceFile("s3://megadados-alunos/web-brasil")
-    rdd = sc.sequenceFile("part-00000")
+    rdd = sc.sequenceFile("s3://megadados-alunos/web-brasil")
+    # rdd = sc.sequenceFile("part-00000")
     N_docs = rdd.count()
 
     DOC_COUNT_MIN = 10
     DOC_COUNT_MAX = N_docs * 0.7
 
-    # esse rdd é usado como base para os outros,
-    # fazendo ele aqui, não precisamos refazer essa pipeline
     rdd_idf = (
         rdd.flatMap(conta_documento)
         .reduceByKey(lambda x, y: x + y)
