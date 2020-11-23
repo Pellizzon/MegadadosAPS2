@@ -50,7 +50,9 @@ def limpa_conteudo(conteudo):
 def conta_documento(item):
     conteudo = limpa_conteudo(item[1])
     palavras = conteudo.strip().split()
-    return [(i.lower(), 1) for i in set(palavras)]
+    palavras_ = [i for i in palavras if not any(j.isdigit() for j in i)]
+    palavras_filtradas = [i for i in palavras_ if len(i) > 3]
+    return [(i.lower(), 1) for i in set(palavras_filtradas)]
 
 
 def calcula_idf(item):
@@ -67,7 +69,9 @@ def filtra_doc(item):
 def conta_palavra(item):
     conteudo = limpa_conteudo(item[1])
     palavras = conteudo.strip().split()
-    return [(i.lower(), 1) for i in palavras]
+    palavras_ = [i for i in palavras if not any(j.isdigit() for j in i)]
+    palavras_filtradas = [i for i in palavras_ if len(i) > 3]
+    return [(i.lower(), 1) for i in palavras_filtradas]
 
 
 def calcula_freq(item):
@@ -99,8 +103,8 @@ def pega_top_100(rdd):
 if __name__ == "__main__":
 
     sc = pyspark.SparkContext(appName="flaflu")
-    rdd = sc.sequenceFile("s3://megadados-alunos/web-brasil")
-    # rdd = sc.sequenceFile("part-00000")
+    # rdd = sc.sequenceFile("s3://megadados-alunos/web-brasil")
+    rdd = sc.sequenceFile("part-00000")
     N_docs = rdd.count()
 
     DOC_COUNT_MIN = 10
@@ -131,10 +135,15 @@ if __name__ == "__main__":
 
     tops = [top_relevancia, top_relevanciaFLA, top_relevanciaFLU]
     csv_names = ["top100_intersection.csv", "top100_FLA.csv", "top100_FLU.csv"]
+    # csv_names = [
+    #     "brasil_top100_intersection.csv",
+    #     "brasil_top100_FLA.csv",
+    #     "brasil_top100_FLU.csv",
+    # ]
 
     for top, name in zip(tops, csv_names):
         df = pd.DataFrame(top, columns=["Palavra", "Relevancia"])
-        df.to_csv(f"s3://megadados-alunos/matheus-pedro/{name}")
-        # df.to_csv(f"{name}")
+        # df.to_csv(f"s3://megadados-alunos/matheus-pedro/{name}")
+        df.to_csv(f"{name}")
 
     sc.stop()
