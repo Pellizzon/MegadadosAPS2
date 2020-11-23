@@ -1,6 +1,7 @@
 import boto3
 import pyspark
 import math
+import pandas as pd
 
 
 def limpa_conteudo(conteudo):
@@ -77,7 +78,7 @@ def calcula_freq(item):
 
 def gera_rdd_freq(rdd, palavra):
     rdd_freq = (
-        rdd.filter(lambda x: palavra in x[0])
+        rdd.filter(lambda x: palavra in x[1])
         .flatMap(conta_palavra)
         .reduceByKey(lambda x, y: x + y)
         .map(calcula_freq)
@@ -96,15 +97,6 @@ def pega_top_100(rdd):
 
 
 if __name__ == "__main__":
-
-    AWS_ACCESS_KEY_ID = "foo"
-    AWS_SECRET_ACCESS_KEY = "bar"
-
-    s3 = boto3.client(
-        "s3",
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    )
 
     sc = pyspark.SparkContext(appName="flaflu")
     rdd = sc.sequenceFile("s3://megadados-alunos/web-brasil")
@@ -138,14 +130,11 @@ if __name__ == "__main__":
     top_relevanciaFLU = pega_top_100(rdd_relevanciaFLU)
 
     tops = [top_relevancia, top_relevanciaFLA, top_relevanciaFLU]
-    txt_names = ["top100_intersection.txt", "top100_FLA.txt", "top100_FLU.txt"]
+    csv_names = ["top100_intersection.csv", "top100_FLA.csv", "top100_FLU.csv"]
 
-    for top, txt_name in zip(tops, txt_names):
-        with open(txt_name, "w", encoding="utf-8") as file:
-            for line in top:
-                file.write(f"{line[0]} : {line[1]}\n")
-
-        with open(txt_name, "rb", encoding="utf-8") as file:
-            s3.upload_fileobj(file, "megadados-alunos", f"mat-pedroramos/{txt_name}")
+    for top, name in zip(tops, csv_names):
+        df = pd.DataFrame(top, columns=["Palavra", "Relevancia"])
+        df.to_csv(f"s3://megadados-alunos/matheus-pedro/{name}")
+        # df.to_csv(f"{name}")
 
     sc.stop()
