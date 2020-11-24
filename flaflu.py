@@ -60,20 +60,18 @@ def calcula_freq(item):
     return (palavra, freq)
 
 
-def gera_rdd_freq_global(rdd, palavra):
+def gera_rdd_freq_global(rdd):
     rdd_freq = (
-        rdd.filter(lambda x: palavra in x[1])
-        .flatMap(conta_palavra_global)
+        rdd.flatMap(conta_palavra_global)
         .reduceByKey(lambda x, y: x + y)
         .map(calcula_freq)
     )
     return rdd_freq
 
 
-def gera_rdd_freq_local(rdd, palavra):
+def gera_rdd_freq_local(rdd):
     rdd_freq = (
-        rdd.filter(lambda x: palavra in x[1])
-        .flatMap(conta_palavra_local)
+        rdd.flatMap(conta_palavra_local)
         .reduceByKey(lambda x, y: x + y)
         .map(calcula_freq)
     )
@@ -109,8 +107,11 @@ if __name__ == "__main__":
     palavra1 = "flamengo"
     palavra2 = "fluminense"
 
-    rdd_freq_p1_global = gera_rdd_freq_global(rdd, palavra1)
-    rdd_freq_p2_global = gera_rdd_freq_global(rdd, palavra2)
+    rdd_p1 = rdd.filter(lambda x: palavra1 in x[1])
+    rdd_p2 = rdd.filter(lambda x: palavra2 in x[1])
+
+    rdd_freq_p1_global = gera_rdd_freq_global(rdd_p1)
+    rdd_freq_p2_global = gera_rdd_freq_global(rdd_p2)
 
     rdd_freq_inter_global = rdd_freq_p1_global.intersection(rdd_freq_p2_global)
 
@@ -142,8 +143,8 @@ if __name__ == "__main__":
         df.to_csv(f"s3://megadados-alunos/matheus-pedro/{name}")
         # df.to_csv(f"{name}")
 
-    rdd_freq_p1_local = gera_rdd_freq_local(rdd, palavra1)
-    rdd_freq_p2_local = gera_rdd_freq_local(rdd, palavra2)
+    rdd_freq_p1_local = gera_rdd_freq_local(rdd_p1)
+    rdd_freq_p2_local = gera_rdd_freq_local(rdd_p2)
 
     rdd_freq_inter_local = rdd_freq_p1_local.intersection(rdd_freq_p2_local)
 
