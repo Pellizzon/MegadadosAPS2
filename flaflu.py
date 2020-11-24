@@ -4,53 +4,10 @@ import math
 import pandas as pd
 
 
-def limpa_conteudo(conteudo):
-    to_remove = [
-        "!",
-        ".",
-        ",",
-        ":",
-        "@",
-        "#",
-        "$",
-        "%",
-        "/",
-        "\\",
-        "|",
-        "´",
-        "`",
-        "*",
-        "&",
-        "(",
-        ")",
-        "[",
-        "]",
-        "}",
-        "{",
-        "+",
-        "-",
-        "<",
-        ">",
-        "?",
-        "°",
-        "=",
-        '"',
-        "_",
-        "'",
-        ";",
-        "^",
-        "~",
-        "¨",
-    ]
-    for i in to_remove:
-        conteudo = conteudo.replace(i, " ")
-    return conteudo
-
-
 def conta_documento(item):
-    conteudo = limpa_conteudo(item[1])
+    conteudo = item[1]
     palavras = conteudo.strip().split()
-    palavras_ = [i for i in palavras if not any(j.isdigit() for j in i)]
+    palavras_ = [i for i in palavras if i.isalpha()]
     palavras_filtradas = [i for i in palavras_ if len(i) > 3]
     return [(i.lower(), 1) for i in set(palavras_filtradas)]
 
@@ -67,10 +24,25 @@ def filtra_doc(item):
 
 
 def conta_palavra(item):
-    conteudo = limpa_conteudo(item[1])
+    url, conteudo = item
     palavras = conteudo.strip().split()
-    palavras_ = [i for i in palavras if not any(j.isdigit() for j in i)]
-    palavras_filtradas = [i for i in palavras_ if len(i) > 3]
+    palavras_ = [i for i in palavras if i.isalpha()]
+    palavras_boas = []
+    for i in range(len(palavras_)):
+        if i < 5:
+            if palavra1 in palavras_[: i + 5] or palavra2 in palavras_[: i + 5]:
+                palavras_boas.append(palavras_[i])
+        elif i > len(palavras_) - 5:
+            if palavra1 in palavras_[i - 5 :] or palavra2 in palavras_[i - 5 :]:
+                palavras_boas.append(palavras_[i])
+        else:
+            if (
+                palavra1 in palavras_[i - 5 : i + 5]
+                or palavra2 in palavras_[i - 5 : i + 5]
+            ):
+                palavras_boas.append(palavras_[i])
+
+    palavras_filtradas = [i.lower() for i in palavras_boas if len(i) > 3]
     return [(i.lower(), 1) for i in palavras_filtradas]
 
 
@@ -103,12 +75,12 @@ def pega_top_100(rdd):
 if __name__ == "__main__":
 
     sc = pyspark.SparkContext(appName="flaflu")
-    # rdd = sc.sequenceFile("s3://megadados-alunos/web-brasil")
-    rdd = sc.sequenceFile("part-00000")
+    rdd = sc.sequenceFile("s3://megadados-alunos/web-brasil")
+    # rdd = sc.sequenceFile("part-00000")
     N_docs = rdd.count()
 
-    DOC_COUNT_MIN = 10
-    DOC_COUNT_MAX = N_docs * 0.7
+    DOC_COUNT_MIN = 5
+    DOC_COUNT_MAX = N_docs * 0.8
 
     rdd_idf = (
         rdd.flatMap(conta_documento)
@@ -117,33 +89,36 @@ if __name__ == "__main__":
         .map(lambda x: (x[0], math.log10(N_docs / x[1])))
     )
 
-    rdd_freq_fla = gera_rdd_freq(rdd, "flamengo")
-    rdd_freq_flu = gera_rdd_freq(rdd, "fluminense")
+    palavra1 = "flamengo"
+    palavra2 = "fluminense"
 
-    rdd_freq_flaflu = rdd_freq_fla.intersection(rdd_freq_flu)
+    rdd_freq_p1 = gera_rdd_freq(rdd, palavra1)
+    rdd_freq_p2 = gera_rdd_freq(rdd, palavra2)
 
-    rdd_freq_flaOnly = rdd_freq_fla.subtractByKey(rdd_freq_flaflu)
-    rdd_freq_fluOnly = rdd_freq_flu.subtractByKey(rdd_freq_flaflu)
+    rdd_freq_inter = rdd_freq_p1.intersection(rdd_freq_p2)
 
-    rdd_relevancia = gera_relevancia(rdd_freq_flaflu, rdd_idf)
-    rdd_relevanciaFLA = gera_relevancia(rdd_freq_flaOnly, rdd_idf)
-    rdd_relevanciaFLU = gera_relevancia(rdd_freq_fluOnly, rdd_idf)
+    rdd_freq_p1Only = rdd_freq_p1.subtractByKey(rdd_freq_inter)
+    rdd_freq_p2Only = rdd_freq_p2.subtractByKey(rdd_freq_inter)
+
+    rdd_relevancia = gera_relevancia(rdd_freq_inter, rdd_idf)
+    rdd_relevanciaP1 = gera_relevancia(rdd_freq_p1Only, rdd_idf)
+    rdd_relevanciaP2 = gera_relevancia(rdd_freq_p2Only, rdd_idf)
 
     top_relevancia = pega_top_100(rdd_relevancia)
-    top_relevanciaFLA = pega_top_100(rdd_relevanciaFLA)
-    top_relevanciaFLU = pega_top_100(rdd_relevanciaFLU)
+    top_relevanciaP1 = pega_top_100(rdd_relevanciaP1)
+    top_relevanciaP2 = pega_top_100(rdd_relevanciaP2)
 
-    tops = [top_relevancia, top_relevanciaFLA, top_relevanciaFLU]
-    csv_names = ["top100_intersection.csv", "top100_FLA.csv", "top100_FLU.csv"]
-    # csv_names = [
-    #     "brasil_top100_intersection.csv",
-    #     "brasil_top100_FLA.csv",
-    #     "brasil_top100_FLU.csv",
-    # ]
+    tops = [top_relevancia, top_relevanciaP1, top_relevanciaP2]
+    # csv_names = ["top100_intersection.csv", f"top100_{palavra1}.csv", f"top100_{palavra2}.csv"]
+    csv_names = [
+        "brasil_top100_intersection.csv",
+        f"brasil_top100_{palavra1}.csv",
+        f"brasil_top100_{palavra2}.csv",
+    ]
 
     for top, name in zip(tops, csv_names):
         df = pd.DataFrame(top, columns=["Palavra", "Relevancia"])
-        # df.to_csv(f"s3://megadados-alunos/matheus-pedro/{name}")
-        df.to_csv(f"{name}")
+        df.to_csv(f"s3://megadados-alunos/matheus-pedro/{name}")
+        # df.to_csv(f"{name}")
 
     sc.stop()
