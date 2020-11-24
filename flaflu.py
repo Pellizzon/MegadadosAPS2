@@ -23,7 +23,15 @@ def filtra_doc(item):
     return (contagem < DOC_COUNT_MAX) and (contagem > DOC_COUNT_MIN)
 
 
-def conta_palavra(item):
+def conta_palavra_global(item):
+    url, conteudo = item
+    palavras = conteudo.strip().split()
+    palavras_ = [i for i in palavras if i.isalpha()]
+    palavras_filtradas = [i.lower() for i in palavras_ if len(i) > 3]
+    return [(i.lower(), 1) for i in palavras_filtradas]
+
+
+def conta_palavra_local(item):
     url, conteudo = item
     palavras = conteudo.strip().split()
     palavras_ = [i for i in palavras if i.isalpha()]
@@ -52,14 +60,23 @@ def calcula_freq(item):
     return (palavra, freq)
 
 
-def gera_rdd_freq(rdd, palavra):
+def gera_rdd_freq_global(rdd, palavra):
     rdd_freq = (
         rdd.filter(lambda x: palavra in x[1])
-        .flatMap(conta_palavra)
+        .flatMap(conta_palavra_global)
         .reduceByKey(lambda x, y: x + y)
         .map(calcula_freq)
     )
+    return rdd_freq
 
+
+def gera_rdd_freq_local(rdd, palavra):
+    rdd_freq = (
+        rdd.filter(lambda x: palavra in x[1])
+        .flatMap(conta_palavra_local)
+        .reduceByKey(lambda x, y: x + y)
+        .map(calcula_freq)
+    )
     return rdd_freq
 
 
@@ -92,31 +109,64 @@ if __name__ == "__main__":
     palavra1 = "flamengo"
     palavra2 = "fluminense"
 
-    rdd_freq_p1 = gera_rdd_freq(rdd, palavra1)
-    rdd_freq_p2 = gera_rdd_freq(rdd, palavra2)
+    rdd_freq_p1_global = gera_rdd_freq_global(rdd, palavra1)
+    rdd_freq_p2_global = gera_rdd_freq_global(rdd, palavra2)
 
-    rdd_freq_inter = rdd_freq_p1.intersection(rdd_freq_p2)
+    rdd_freq_inter_global = rdd_freq_p1_global.intersection(rdd_freq_p2_global)
 
-    rdd_freq_p1Only = rdd_freq_p1.subtractByKey(rdd_freq_inter)
-    rdd_freq_p2Only = rdd_freq_p2.subtractByKey(rdd_freq_inter)
+    rdd_freq_p1Only_global = rdd_freq_p1_global.subtractByKey(rdd_freq_inter_global)
+    rdd_freq_p2Only_global = rdd_freq_p2_global.subtractByKey(rdd_freq_inter_global)
 
-    rdd_relevancia = gera_relevancia(rdd_freq_inter, rdd_idf)
-    rdd_relevanciaP1 = gera_relevancia(rdd_freq_p1Only, rdd_idf)
-    rdd_relevanciaP2 = gera_relevancia(rdd_freq_p2Only, rdd_idf)
+    rdd_relevancia_global = gera_relevancia(rdd_freq_inter_global, rdd_idf)
+    rdd_relevanciaP1_global = gera_relevancia(rdd_freq_p1Only_global, rdd_idf)
+    rdd_relevanciaP2_global = gera_relevancia(rdd_freq_p2Only_global, rdd_idf)
 
-    top_relevancia = pega_top_100(rdd_relevancia)
-    top_relevanciaP1 = pega_top_100(rdd_relevanciaP1)
-    top_relevanciaP2 = pega_top_100(rdd_relevanciaP2)
+    top_relevancia_global = pega_top_100(rdd_relevancia_global)
+    top_relevanciaP1_global = pega_top_100(rdd_relevanciaP1_global)
+    top_relevanciaP2_global = pega_top_100(rdd_relevanciaP2_global)
 
-    tops = [top_relevancia, top_relevanciaP1, top_relevanciaP2]
-    # csv_names = ["top100_intersection.csv", f"top100_{palavra1}.csv", f"top100_{palavra2}.csv"]
-    csv_names = [
-        "brasil_top100_intersection.csv",
-        f"brasil_top100_{palavra1}.csv",
-        f"brasil_top100_{palavra2}.csv",
+    tops_global = [
+        top_relevancia_global,
+        top_relevanciaP1_global,
+        top_relevanciaP2_global,
     ]
 
-    for top, name in zip(tops, csv_names):
+    csv_names_global = [
+        "brasil_top100_intersection_global.csv",
+        f"brasil_top100_{palavra1}_global.csv",
+        f"brasil_top100_{palavra2}_global.csv",
+    ]
+
+    for top, name in zip(tops_global, csv_names_global):
+        df = pd.DataFrame(top, columns=["Palavra", "Relevancia"])
+        df.to_csv(f"s3://megadados-alunos/matheus-pedro/{name}")
+        # df.to_csv(f"{name}")
+
+    rdd_freq_p1_local = gera_rdd_freq_local(rdd, palavra1)
+    rdd_freq_p2_local = gera_rdd_freq_local(rdd, palavra2)
+
+    rdd_freq_inter_local = rdd_freq_p1_local.intersection(rdd_freq_p2_local)
+
+    rdd_freq_p1Only_local = rdd_freq_p1_local.subtractByKey(rdd_freq_inter_local)
+    rdd_freq_p2Only_local = rdd_freq_p2_local.subtractByKey(rdd_freq_inter_local)
+
+    rdd_relevancia_local = gera_relevancia(rdd_freq_inter_local, rdd_idf)
+    rdd_relevanciaP1_local = gera_relevancia(rdd_freq_p1Only_local, rdd_idf)
+    rdd_relevanciaP2_local = gera_relevancia(rdd_freq_p2Only_local, rdd_idf)
+
+    top_relevancia_local = pega_top_100(rdd_relevancia_local)
+    top_relevanciaP1_local = pega_top_100(rdd_relevanciaP1_local)
+    top_relevanciaP2_local = pega_top_100(rdd_relevanciaP2_local)
+
+    tops_local = [top_relevancia_local, top_relevanciaP1_local, top_relevanciaP2_local]
+
+    csv_names_local = [
+        "brasil_top100_intersection_local.csv",
+        f"brasil_top100_{palavra1}_local.csv",
+        f"brasil_top100_{palavra2}_local.csv",
+    ]
+
+    for top, name in zip(tops_local, csv_names_local):
         df = pd.DataFrame(top, columns=["Palavra", "Relevancia"])
         df.to_csv(f"s3://megadados-alunos/matheus-pedro/{name}")
         # df.to_csv(f"{name}")
