@@ -50,7 +50,7 @@ def limpa_conteudo(conteudo):
 def conta_documento(item):
     conteudo = limpa_conteudo(item[1])
     palavras = conteudo.strip().split()
-    palavras_ = [i for i in palavras if not any(j.isdigit() for j in i)]
+    palavras_ = [i for i in palavras if i.isalpha()]
     palavras_filtradas = [i for i in palavras_ if len(i) > 3]
     return [(i.lower(), 1) for i in set(palavras_filtradas)]
 
@@ -69,7 +69,7 @@ def filtra_doc(item):
 def conta_palavra(item):
     conteudo = limpa_conteudo(item[1])
     palavras = conteudo.strip().split()
-    palavras_ = [i for i in palavras if not any(j.isdigit() for j in i)]
+    palavras_ = [i for i in palavras if i.isalpha()]
     palavras_filtradas = [i for i in palavras_ if len(i) > 3]
     return [(i.lower(), 1) for i in palavras_filtradas]
 
