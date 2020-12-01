@@ -1,4 +1,3 @@
-import boto3
 import pyspark
 import math
 import pandas as pd
@@ -10,12 +9,6 @@ def conta_documento(item):
     palavras_ = [i for i in palavras if i.isalpha()]
     palavras_filtradas = [i for i in palavras_ if len(i) > 3]
     return [(i.lower(), 1) for i in set(palavras_filtradas)]
-
-
-def calcula_idf(item):
-    palavra, contagem = item
-    idf = math.log10(N_docs / contagem)
-    return (palavra, idf)
 
 
 def filtra_doc(item):
