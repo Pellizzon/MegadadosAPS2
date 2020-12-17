@@ -54,7 +54,7 @@ ________________
 
 The words that are most emphasized by the word clouds are mostly nonsense, but there was actually margin for some strange results. "Flamengo" is not only a soccer team, but also a neighbourhood in Rio de Janeiro. Likewise, "Fluminense" means more than a soccer team. It describes anything that comes from Rio de Janeiro.
 
-Nonetheless, something had to be done in order to get better results. Thus, we resorted to a more complex analisys for our second iteration. We decided to consider only the local vocabulary, which means we ignored any word that was not in the range of 5 words before or after the occurance of a target word. With this new approach we ended up getting much better results:
+Nonetheless, something had to be done in order to get better results. Thus, we resorted to a more complex analisys for our second iteration. We decided to consider only the local vocabulary, which means we ignored any word that was not in the range of 5 words before or after the occurance of a target word. This new approach yielded much better results:
 
 <div style="text-align: center">
     <img src="assets/FlamengoLocal.png"/>
