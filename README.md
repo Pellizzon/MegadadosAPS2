@@ -6,9 +6,9 @@ The data used was available in a S3 bucket and was extracted from <a href="https
 
 With a smaller dataset it was time to start doing the math needed to discover the most relevant words to each of the teams and, also, the most relevant related to both of them together. We started by calculating the Inverse Document Frequency (IDF) with the following equation:
 
-<p style="text-align: center;">
+<div style="text-align: center;">
     <img src="https://latex.codecogs.com/gif.latex?IDF(word)=log_{10}(\frac{N}{docs(word)})" title="IDF(word)=log_{10}(\frac{N}{docs(word)})" style="margin: 0 auto;"/>
-</p>
+</div>
 
 where *docs(word)* is the number of documents in which a specific word appears and *N* represents the number of documents in the dataset. Through this approach, over a small sample of documents, we were able to obtain the following sample of results:
 
